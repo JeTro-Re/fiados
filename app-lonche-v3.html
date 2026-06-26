@@ -1,0 +1,1240 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>App Lonche</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg:#F4F5F9; --surface:#FFFFFF; --card:#FFFFFF; --border:#E4E6EF;
+    --text:#1A1D2E; --muted:#8B90A8; --amber:#E8920A; --amber-dim:#FEF3DC;
+    --green:#22A06B; --green-dim:#D6F5E8; --red:#D94040; --red-dim:#FDEAEA;
+    --blue:#3B6FE8; --radius:12px; --radius-sm:8px; --nav-h:68px; --header-h:64px;
+  }
+  html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;font-size:15px;line-height:1.5;overflow:hidden;}
+  #app{display:flex;flex-direction:column;height:100dvh;max-width:430px;margin:0 auto;position:relative;}
+
+  /* HEADER */
+  .app-header{height:var(--header-h);background:var(--surface);border-bottom:1px solid var(--border);box-shadow:0 1px 8px rgba(0,0,0,.06);display:flex;align-items:center;padding:0 18px;gap:12px;flex-shrink:0;position:relative;z-index:10;}
+  .header-logo{width:36px;height:36px;background:var(--amber);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;}
+  .header-info{flex:1;min-width:0;}
+  .header-name{font-family:'Space Grotesk',sans-serif;font-size:16px;font-weight:700;color:var(--text);line-height:1.2;}
+  .header-sub{font-size:12px;color:var(--muted);margin-top:1px;}
+  .turno-badge{display:flex;align-items:center;gap:6px;background:var(--green-dim);border:1px solid var(--green);border-radius:20px;padding:5px 12px;font-size:12px;font-weight:600;color:var(--green);cursor:pointer;flex-shrink:0;white-space:nowrap;transition:all .2s;}
+  .turno-badge .dot{width:6px;height:6px;border-radius:50%;background:var(--green);animation:pulse 2s infinite;}
+  .turno-badge.cerrado{background:var(--red-dim);border-color:var(--red);color:var(--red);}
+  .turno-badge.cerrado .dot{background:var(--red);animation:none;}
+  @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(.8)}}
+
+  /* SCREENS */
+  .screens{flex:1;overflow:hidden;position:relative;}
+  .screen{position:absolute;inset:0;overflow-y:auto;padding:16px 16px calc(var(--nav-h) + 16px);display:none;-webkit-overflow-scrolling:touch;scrollbar-width:none;}
+  .screen::-webkit-scrollbar{display:none;}
+  .screen.active{display:block;}
+
+  /* BOTTOM NAV */
+  .bottom-nav{height:var(--nav-h);background:var(--surface);border-top:1px solid var(--border);box-shadow:0 -2px 12px rgba(0,0,0,.07);display:flex;position:absolute;bottom:0;left:0;right:0;z-index:10;}
+  .nav-btn{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;background:none;border:none;color:var(--muted);font-family:'Inter',sans-serif;font-size:10px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;cursor:pointer;transition:color .15s;-webkit-tap-highlight-color:transparent;}
+  .nav-btn svg{transition:transform .15s;}
+  .nav-btn.active{color:var(--amber);}
+  .nav-btn.active svg{transform:translateY(-2px);}
+
+  /* COMMON */
+  .section-label{font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:10px;margin-top:20px;}
+  .section-label:first-child{margin-top:0;}
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:11px 18px;border-radius:var(--radius-sm);border:none;font-family:'Inter',sans-serif;font-size:14px;font-weight:600;cursor:pointer;transition:opacity .15s,transform .1s;-webkit-tap-highlight-color:transparent;}
+  .btn:active{opacity:.8;transform:scale(.98);}
+  .btn:disabled{opacity:.5;cursor:not-allowed;}
+  .btn-amber{background:var(--amber);color:#fff;}
+  .btn-green{background:var(--green);color:#fff;}
+  .btn-red{background:var(--red);color:#fff;}
+  .btn-ghost{background:var(--bg);color:var(--text);border:1px solid var(--border);}
+  .btn-outline{background:transparent;border:1px solid var(--border);color:var(--text);}
+  .btn-full{width:100%;}
+  .btn-sm{padding:8px 14px;font-size:13px;}
+  .input{width:100%;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-family:'Inter',sans-serif;font-size:14px;padding:12px 14px;outline:none;transition:border-color .15s;}
+  .input:focus{border-color:var(--amber);}
+  .input::placeholder{color:var(--muted);}
+
+  /* TOAST */
+  #toast{position:fixed;bottom:calc(var(--nav-h) + 16px);left:50%;transform:translateX(-50%) translateY(20px);background:#1A1D2E;color:#fff;padding:10px 20px;border-radius:24px;font-size:13px;font-weight:600;opacity:0;pointer-events:none;transition:all .25s;z-index:9999;white-space:nowrap;}
+  #toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+  #toast.error{background:var(--red);}
+
+  /* LOADING */
+  .loading-spinner{display:flex;align-items:center;justify-content:center;padding:40px;}
+  .spinner{width:28px;height:28px;border:3px solid var(--border);border-top-color:var(--amber);border-radius:50%;animation:spin .7s linear infinite;}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .empty-state{text-align:center;padding:40px 20px;color:var(--muted);font-size:14px;}
+
+  /* NOTAS */
+  .notes-textarea{width:100%;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);font-family:'Inter',sans-serif;font-size:14px;padding:14px;resize:none;min-height:140px;outline:none;transition:border-color .15s;line-height:1.6;}
+  .notes-textarea:focus{border-color:var(--amber);}
+  .notes-textarea::placeholder{color:var(--muted);}
+  .notes-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;}
+  .saved-note{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:14px;margin-bottom:10px;position:relative;box-shadow:0 1px 4px rgba(0,0,0,.05);animation:fadeIn .2s ease;}
+  .note-meta{font-size:12px;color:var(--amber);font-weight:600;margin-bottom:6px;}
+  .note-text{font-size:14px;color:var(--text);line-height:1.5;padding-right:28px;white-space:pre-wrap;}
+  .note-del{position:absolute;top:12px;right:12px;background:var(--red-dim);border:1px solid var(--red);color:var(--red);width:24px;height:24px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:16px;cursor:pointer;line-height:1;-webkit-tap-highlight-color:transparent;}
+  @keyframes fadeIn{from{opacity:0;transform:translateY(6px)}}
+
+  /* FIADOS lista */
+  .fiados-toolbar{display:flex;gap:10px;align-items:center;margin-bottom:16px;}
+  .search-wrap{flex:1;position:relative;}
+  .search-wrap svg{position:absolute;left:12px;top:50%;transform:translateY(-50%);pointer-events:none;}
+  .input.search{padding-left:38px;}
+  .pasillo-section{margin-bottom:14px;}
+  .pasillo-header{display:flex;align-items:center;justify-content:space-between;background:var(--amber-dim);border:1px solid var(--border);border-radius:var(--radius-sm) var(--radius-sm) 0 0;padding:9px 14px;}
+  .pasillo-name{font-family:'Space Grotesk',sans-serif;font-size:13px;font-weight:700;color:var(--amber);text-transform:uppercase;letter-spacing:.5px;}
+  .pasillo-count{font-size:12px;color:var(--muted);font-weight:600;}
+  .pasillo-total{font-size:13px;font-weight:700;color:var(--text);}
+  .client-row{display:flex;align-items:center;justify-content:space-between;padding:13px 14px;background:var(--card);border:1px solid var(--border);border-top:none;cursor:pointer;transition:background .1s;-webkit-tap-highlight-color:transparent;}
+  .client-row:last-child{border-radius:0 0 var(--radius-sm) var(--radius-sm);}
+  .client-row:active{background:var(--bg);}
+  .client-name{font-size:14px;font-weight:500;}
+  .client-amount{font-family:'Space Grotesk',sans-serif;font-size:14px;font-weight:700;color:var(--red);}
+  .client-amount.cero{color:var(--green);}
+
+  /* FIADOS detalle */
+  .detail-header{display:flex;align-items:center;gap:12px;margin-bottom:16px;}
+  .back-btn{background:var(--card);border:1px solid var(--border);border-radius:var(--radius-sm);width:36px;height:36px;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;-webkit-tap-highlight-color:transparent;}
+  .detail-info{flex:1;}
+  .detail-name{font-family:'Space Grotesk',sans-serif;font-size:18px;font-weight:700;}
+  .detail-pasillo{font-size:12px;color:var(--muted);margin-top:1px;}
+  .detail-total{font-family:'Space Grotesk',sans-serif;font-size:22px;font-weight:700;color:var(--red);}
+  .detail-total.cero{color:var(--green);}
+  .pay-row{display:flex;gap:10px;margin-bottom:14px;}
+  .pay-input{flex:1;}
+  .action-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;}
+  .ledger-card{border:1px solid #2054cd;border-radius:var(--radius-sm);overflow:hidden;background:#DADCE0;box-shadow:0 1px 4px rgba(0,0,0,.06);}
+  .ledger-head{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;background:#3551de;color:#fff;padding:9px 12px;font-family:'Space Grotesk',sans-serif;font-weight:700;}
+  .ledger-name{min-width:0;font-size:17px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .ledger-name::before{content:'•';margin-right:8px;}
+  .ledger-total{font-size:17px;}
+  .ledger-row{display:grid;grid-template-columns:minmax(46px,.7fr) minmax(72px,1.6fr) 46px 58px 24px;gap:6px;align-items:center;min-height:29px;padding:5px 8px;background: var(--card);border-top:1px solid #8C8F96;color:#16191F;font-size:11px;line-height:1.2;}
+  .ledger-row span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .ledger-row .ledger-person{font-weight:500;}
+  .ledger-row .ledger-desc{color:#222;white-space:normal;overflow-wrap:anywhere;}
+  .ledger-row .ledger-date{text-align:center;color:#333;}
+  .ledger-row .ledger-amt{text-align:right;font-weight:700;font-variant-numeric:tabular-nums;}
+  .ledger-del{width:20px;height:20px;border:none;border-radius:5px;background:rgba(0,0,0,.12);color:#222;display:flex;align-items:center;justify-content:center;font-size:14px;line-height:1;cursor:pointer;-webkit-tap-highlight-color:transparent;}
+  .ledger-row.pago{background: #d6f5e8;border-color: #22a06b;}
+  .ledger-row.queda{background: #fdeaea;border-color: var(--red);}
+  .ledger-row.pago,.ledger-row.queda{grid-template-columns:1fr 82px 24px;}
+  .ledger-row.pago .ledger-lbl,.ledger-row.queda .ledger-lbl{font-weight:700;}
+  .ledger-row.pago .ledger-amt,.ledger-row.queda .ledger-amt{text-align:right;}
+  @media (max-width:360px){
+    .ledger-row{grid-template-columns:44px minmax(58px,1fr) 42px 52px 22px;font-size:10px;padding-left:6px;padding-right:6px;gap:4px;}
+    .ledger-row.pago,.ledger-row.queda{grid-template-columns:1fr 74px 22px;}
+  }
+
+  /* SELECT estilo input */
+  select.input{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238B90A8' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center;}
+
+  /* MODALS */
+  .modal-overlay{display:none;position:fixed;inset:0;z-index:100;background:rgba(0,0,0,.4);align-items:flex-end;}
+  .modal-overlay.open{display:flex;}
+  .modal{background:var(--surface);border-radius:20px 20px 0 0;border-top:1px solid var(--border);box-shadow:0 -8px 32px rgba(0,0,0,.12);width:100%;max-width:430px;margin:0 auto;padding:24px 20px 36px;animation:slideUp .25s ease;}
+  .modal-title{font-family:'Space Grotesk',sans-serif;font-size:17px;font-weight:700;margin-bottom:18px;}
+  .modal-fields{display:flex;flex-direction:column;gap:10px;}
+  .modal-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .modal-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:18px;}
+  @keyframes slideUp{from{transform:translateY(100%)}}
+
+  /* CIERRE */
+  .kpi-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;}
+  .kpi-wide{grid-column:1/-1;}
+  .kpi-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:14px;box-shadow:0 1px 4px rgba(0,0,0,.05);}
+  .kpi-label{font-size:11px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--muted);}
+  .kpi-value{font-family:'Space Grotesk',sans-serif;font-size:26px;font-weight:700;line-height:1.2;margin-top:4px;}
+  .kpi-card.amber{border-color:var(--amber);background:var(--amber-dim);}
+  .kpi-card.amber .kpi-value{color:var(--amber);}
+  .kpi-card.green{border-color:var(--green);background:var(--green-dim);}
+  .kpi-card.green .kpi-value{color:var(--green);}
+  .kpi-card.red{border-color:var(--red);background:var(--red-dim);}
+  .kpi-card.red .kpi-value{color:var(--red);}
+  .kpi-grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:14px;}
+  .kpi-grid-3 .kpi-value{font-size:16px;}
+  .kpi-grid-3 .kpi-label{font-size:10px;}
+  .input-group{margin-bottom:12px;}
+  .input-group label{display:block;font-size:12px;font-weight:600;color:var(--muted);margin-bottom:6px;letter-spacing:.4px;text-transform:uppercase;}
+  .desglose{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:14px;margin-bottom:14px;box-shadow:0 1px 4px rgba(0,0,0,.05);}
+  .desglose-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);font-size:14px;}
+  .desglose-row:last-child{border-bottom:none;}
+  .desglose-row .lbl{color:var(--muted);}
+  .desglose-row .val{font-weight:700;}
+  .desglose-row .val.neg{color:var(--red);}
+  .desglose-row .val.pos{color:var(--green);}
+  .desglose-row.total .lbl{font-weight:700;color:var(--text);}
+  .desglose-row.total .val{font-family:'Space Grotesk',sans-serif;font-size:18px;color:var(--amber);}
+  .desglose-divider{height:1px;background:var(--border);margin:4px 0;}
+  .date-chip{background:var(--amber-dim);border:1px solid var(--amber);border-radius:var(--radius-sm);padding:12px 14px;font-family:'Space Grotesk',sans-serif;font-size:15px;font-weight:700;text-align:center;color:var(--amber);margin-bottom:14px;letter-spacing:1px;}
+  .cierre-btns{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .cierre-saved-badge{background:var(--green-dim);border:1px solid var(--green);color:var(--green);border-radius:var(--radius-sm);padding:8px 14px;font-size:13px;font-weight:600;text-align:center;margin-bottom:10px;}
+
+  /* REPORTE */
+  .month-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
+  .month-nav-btn{background:var(--card);border:1px solid var(--border);border-radius:var(--radius-sm);width:36px;height:36px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--text);box-shadow:0 1px 3px rgba(0,0,0,.05);-webkit-tap-highlight-color:transparent;}
+  .month-title{font-family:'Space Grotesk',sans-serif;font-size:16px;font-weight:700;text-transform:uppercase;letter-spacing:1px;}
+  .mes-card{background:linear-gradient(135deg,#E8920A 0%,#C97200 100%);border-radius:var(--radius);padding:18px;margin-bottom:10px;color:#fff;box-shadow:0 4px 16px rgba(232,146,10,.3);}
+  .mes-label{font-size:11px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;opacity:.85;}
+  .mes-value{font-family:'Space Grotesk',sans-serif;font-size:34px;font-weight:700;line-height:1.1;margin:4px 0;}
+  .mes-sub{font-size:13px;opacity:.85;font-weight:600;}
+  .stats-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;}
+  .stat-card{border:1px solid var(--border);border-radius:var(--radius);padding:14px;background:var(--card);box-shadow:0 1px 4px rgba(0,0,0,.05);}
+  .stat-card.highlight{background:#EEF3FD;border-color:var(--blue);}
+  .stat-label{font-size:11px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--muted);margin-bottom:4px;}
+  .stat-value{font-family:'Space Grotesk',sans-serif;font-size:22px;font-weight:700;}
+  .stat-card.highlight .stat-value{color:var(--blue);}
+  .stat-sub{font-size:12px;color:var(--muted);margin-top:2px;}
+  .mini-stats{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;}
+  .mini-stat{background:var(--card);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,.04);}
+  .mini-stat-lbl{font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.5px;}
+  .mini-stat-val{font-family:'Space Grotesk',sans-serif;font-size:18px;font-weight:700;margin-top:2px;}
+  .dias-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;}
+  .export-btn{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:7px 14px;font-size:13px;font-weight:600;color:var(--text);cursor:pointer;display:flex;align-items:center;gap:6px;-webkit-tap-highlight-color:transparent;}
+  .dia-row{display:flex;justify-content:space-between;align-items:center;padding:14px;background:var(--card);border:1px solid var(--border);border-radius:var(--radius-sm);margin-bottom:6px;cursor:pointer;transition:background .1s;-webkit-tap-highlight-color:transparent;box-shadow:0 1px 3px rgba(0,0,0,.04);}
+  .dia-row:active{background:var(--bg);}
+  .dia-name{font-size:14px;font-weight:500;}
+  .dia-amt{font-family:'Space Grotesk',sans-serif;font-size:15px;font-weight:700;color:var(--green);}
+  .dia-amt.no-trabajo{color:var(--muted);font-size:13px;font-family:'Inter',sans-serif;font-weight:400;}
+  .reporte-sheet{background:var(--surface);border-radius:20px 20px 0 0;border-top:1px solid var(--border);box-shadow:0 -8px 32px rgba(0,0,0,.12);width:100%;max-width:430px;margin:0 auto;padding:24px 20px 36px;animation:slideUp .25s ease;max-height:85dvh;overflow-y:auto;}
+  .sheet-date{font-family:'Space Grotesk',sans-serif;font-size:16px;font-weight:700;margin-bottom:16px;color:var(--amber);}
+  .sheet-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:18px;}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <header class="app-header">
+    <div class="header-info">
+      <div class="header-name">App Lonche</div>
+      <div class="header-sub" id="header-fecha">cargando...</div>
+    </div>
+    <button class="turno-badge" id="turno-badge" onclick="toggleTurno()">
+      <span class="dot"></span>
+      <span id="turno-label">ABIERTO</span>
+    </button>
+  </header>
+
+  <div class="screens">
+
+    <!-- ══ NOTAS ══ -->
+    <section class="screen active" id="screen-notas">
+      <div class="section-label">Nueva nota</div>
+      <textarea class="notes-textarea" id="nota-input" placeholder="Escribe tus pedidos, recordatorios o lo que necesites..."></textarea>
+      <div class="notes-actions">
+        <button class="btn btn-ghost btn-sm" onclick="limpiarNota()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M19 6l-1 14H6L5 6M9 6V4h6v2"/></svg>
+          Limpiar
+        </button>
+        <button class="btn btn-amber btn-sm" onclick="guardarNota()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/></svg>
+          Guardar
+        </button>
+      </div>
+      <div class="section-label">Notas guardadas</div>
+      <div id="notas-list"><div class="loading-spinner"><div class="spinner"></div></div></div>
+    </section>
+
+    <!-- ══ FIADOS ══ -->
+    <section class="screen" id="screen-fiados">
+      <div id="fiados-lista">
+        <div class="fiados-toolbar">
+          <div class="search-wrap">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#8B90A8" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+            <input type="text" class="input search" id="search-input" placeholder="Buscar cliente..." oninput="filtrarClientes()">
+          </div>
+          <button class="btn btn-amber btn-sm" onclick="openModal('modal-add-client')">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Agregar
+          </button>
+        </div>
+        <div id="clientes-container"><div class="loading-spinner"><div class="spinner"></div></div></div>
+      </div>
+
+      <div id="fiados-detalle" style="display:none">
+        <div class="detail-header">
+          <button class="back-btn" onclick="hideDetalle()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15 18l-6-6 6-6"/></svg>
+          </button>
+          <div class="detail-info">
+            <div class="detail-name" id="detalle-name">—</div>
+            <div class="detail-pasillo" id="detalle-pasillo">—</div>
+          </div>
+          <div class="detail-total" id="detalle-total">S/ 0.00</div>
+        </div>
+        <div class="pay-row">
+          <input type="number" class="input pay-input" id="pay-amount" placeholder="Monto a pagar (S/)" step="0.50" min="0">
+          <button class="btn btn-green" onclick="confirmarPago()">Confirmar</button>
+        </div>
+        <div class="action-row">
+          <button class="btn btn-outline btn-sm" onclick="abrirModalFiado()">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Agregar Fiado
+          </button>
+          <button class="btn btn-red btn-sm" onclick="eliminarCliente()">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M19 6l-1 14H6L5 6"/></svg>
+            Eliminar Cliente
+          </button>
+        </div>
+        <div class="section-label">Historial</div>
+        <div id="fiados-historial"><div class="loading-spinner"><div class="spinner"></div></div></div>
+      </div>
+    </section>
+
+    <!-- ══ CIERRE ══ -->
+    <section class="screen" id="screen-cierre">
+      <div id="cierre-saved-notice" style="display:none" class="cierre-saved-badge">✓ Cierre guardado — puedes editarlo</div>
+      <div class="kpi-grid" style="margin-bottom:10px">
+        <div class="kpi-card amber">
+          <div class="kpi-label">Ingreso Bruto</div>
+          <div class="kpi-value" id="kpi-bruto">S/ 0.00</div>
+        </div>
+        <div class="kpi-card green">
+          <div class="kpi-label">Ganancia del día</div>
+          <div class="kpi-value" id="kpi-ganancia">S/ 0.00</div>
+        </div>
+      </div>
+      <div class="kpi-grid-3">
+        <div class="kpi-card">
+          <div class="kpi-label">Venta del día</div>
+          <div class="kpi-value" id="kpi-venta">S/ 0.00</div>
+        </div>
+        <div class="kpi-card red">
+          <div class="kpi-label">Fiados</div>
+          <div class="kpi-value" id="kpi-fiados">S/ 0.00</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Cobros</div>
+          <div class="kpi-value" id="kpi-cobros">S/ 0.00</div>
+        </div>
+      </div>
+      <div class="input-group">
+        <label>Sencillo inicial (S/)</label>
+        <input type="number" class="input" id="cierre-sencillo" step="0.50" min="0" placeholder="0.00" oninput="calcularCierre()">
+      </div>
+      <div class="input-group">
+        <label>Costo de insumos (S/)</label>
+        <input type="number" class="input" id="cierre-insumos" step="0.50" min="0" placeholder="0.00" oninput="calcularCierre()">
+      </div>
+      <div class="input-group">
+        <label>Dinero total en caja (S/)</label>
+        <input type="number" class="input" id="cierre-total" step="0.50" min="0" placeholder="0.00" oninput="calcularCierre()" style="border-color:var(--amber);color:var(--amber);font-weight:700">
+      </div>
+      <div class="desglose">
+        <div class="desglose-row"><span class="lbl">Dinero total</span><span class="val" id="d-total">S/ 0.00</span></div>
+        <div class="desglose-row"><span class="lbl">− Sencillo inicial</span><span class="val neg" id="d-sencillo">− S/ 0.00</span></div>
+        <div class="desglose-divider"></div>
+        <div class="desglose-row"><span class="lbl">Ingreso Bruto</span><span class="val" id="d-bruto">S/ 0.00</span></div>
+        <div class="desglose-row"><span class="lbl">− Costo de insumos</span><span class="val neg" id="d-insumos">− S/ 0.00</span></div>
+        <div class="desglose-divider"></div>
+        <div class="desglose-row"><span class="lbl">Ganancia del día</span><span class="val pos" id="d-ganancia">S/ 0.00</span></div>
+        <div class="desglose-row"><span class="lbl">+ Fiados del día</span><span class="val neg" id="d-fiados">+ S/ 0.00</span></div>
+        <div class="desglose-row"><span class="lbl">− Cobros recibidos</span><span class="val neg" id="d-cobros">− S/ 0.00</span></div>
+        <div class="desglose-divider"></div>
+        <div class="desglose-row total"><span class="lbl">Venta del día</span><span class="val" id="d-venta">S/ 0.00</span></div>
+      </div>
+      <div class="input-group" style="margin-bottom:14px">
+        <label>Fecha del cierre</label>
+        <input type="date" class="input" id="cierre-fecha-input" style="font-family:'Space Grotesk',sans-serif;font-weight:700;color:var(--amber);border-color:var(--amber)">
+      </div>
+      <div class="cierre-btns">
+        <button class="btn btn-red" onclick="marcarNoTrabaje()">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
+          No Trabajé
+        </button>
+        <button class="btn btn-amber" onclick="guardarCierre()">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/></svg>
+          Guardar Cierre
+        </button>
+      </div>
+    </section>
+
+    <!-- ══ REPORTE ══ -->
+    <section class="screen" id="screen-reporte">
+      <div class="month-nav">
+        <button class="month-nav-btn" onclick="cambiarMes(-1)">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15 18l-6-6 6-6"/></svg>
+        </button>
+        <span class="month-title" id="reporte-mes-title">—</span>
+        <button class="month-nav-btn" onclick="cambiarMes(1)">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
+        </button>
+      </div>
+      <div class="mes-card">
+        <div class="mes-label">Este mes</div>
+        <div class="mes-value" id="rep-mes-total">S/ 0.00</div>
+        <div class="mes-sub" id="rep-mes-dias">0 días trabajados</div>
+      </div>
+      <div class="stats-row">
+        <div class="stat-card highlight">
+          <div class="stat-label">Esta semana</div>
+          <div class="stat-value" id="rep-semana-total">S/ 0</div>
+          <div class="stat-sub" id="rep-semana-dias">0 días</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Mejor día</div>
+          <div class="stat-value" id="rep-mejor-val" style="color:var(--amber)">S/ 0</div>
+          <div class="stat-sub" id="rep-mejor-dia">—</div>
+        </div>
+      </div>
+      <div class="mini-stats">
+        <div class="mini-stat">
+          <div class="mini-stat-lbl">Promedio diario</div>
+          <div class="mini-stat-val" id="rep-promedio">S/ 0</div>
+        </div>
+        <div class="mini-stat">
+          <div class="mini-stat-lbl">Días trabajados</div>
+          <div class="mini-stat-val" id="rep-dias-trabajados">0</div>
+        </div>
+      </div>
+      <div class="dias-header">
+        <div class="section-label" style="margin:0">Días de este mes</div>
+        <button class="export-btn" onclick="exportarCSV()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Exportar
+        </button>
+      </div>
+      <div id="dias-list"><div class="loading-spinner"><div class="spinner"></div></div></div>
+    </section>
+
+  </div>
+
+  <nav class="bottom-nav">
+    <button class="nav-btn active" id="nav-notas" onclick="switchTab('notas')">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+      Notas
+    </button>
+    <button class="nav-btn" id="nav-fiados" onclick="switchTab('fiados')">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      Fiados
+    </button>
+    <button class="nav-btn" id="nav-cierre" onclick="switchTab('cierre')">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+      Cierre
+    </button>
+    <button class="nav-btn" id="nav-reporte" onclick="switchTab('reporte')">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+      Reporte
+    </button>
+  </nav>
+</div>
+
+<!-- MODAL: Agregar Cliente -->
+<div class="modal-overlay" id="modal-add-client" onclick="closeModalBg(event,'modal-add-client')">
+  <div class="modal">
+    <div class="modal-title">Agregar Cliente</div>
+    <div class="modal-fields">
+      <input type="text" class="input" id="nc-nombre" placeholder="Nombre del cliente">
+      <select class="input" id="nc-pasillo">
+        <option value="">— Selecciona pasillo —</option>
+        <option>UNICACHI</option>
+        <option>PRIMER PASAJE</option>
+        <option>SEGUNDO PASAJE</option>
+        <option>TERCER PASAJE</option>
+        <option>CUARTO PASAJE</option>
+        <option>QUINTO PASAJE</option>
+        <option>AMPLIACION</option>
+        <option>EXTRA</option>
+      </select>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('modal-add-client')">Cancelar</button>
+      <button class="btn btn-amber" onclick="agregarCliente()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Agregar Fiado -->
+<div class="modal-overlay" id="modal-add-fiado" onclick="closeModalBg(event,'modal-add-fiado')">
+  <div class="modal">
+    <div class="modal-title" id="modal-fiado-title">Agregar Fiado</div>
+    <div class="modal-fields">
+      <div class="modal-row">
+        <input type="text" class="input" id="nf-nombre" placeholder="Nombre">
+        <input type="number" class="input" id="nf-monto" placeholder="Monto" step="0.50" min="0">
+      </div>
+      <textarea class="input" id="nf-pedido" placeholder="Pedido (puede ser largo)" style="resize:none;min-height:70px;line-height:1.5"></textarea>
+      <input type="date" class="input" id="nf-fecha">
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('modal-add-fiado')">Cancelar</button>
+      <button class="btn btn-amber" onclick="agregarFiado()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Reporte diario -->
+<div class="modal-overlay" id="modal-reporte-sheet" onclick="closeModalBg(event,'modal-reporte-sheet')">
+  <div class="reporte-sheet">
+    <div class="sheet-date" id="sheet-date">—</div>
+    <div class="desglose" id="sheet-desglose"></div>
+    <div class="sheet-actions">
+      <button class="btn btn-red" onclick="eliminarCierre()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M19 6l-1 14H6L5 6"/></svg>
+        Eliminar
+      </button>
+      <button class="btn btn-ghost" onclick="closeModal('modal-reporte-sheet')">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+import {
+  initializeFirestore, persistentLocalCache, persistentMultipleTabManager,
+  collection, addDoc, getDocs, doc, deleteDoc,
+  query, orderBy, onSnapshot, setDoc, getDoc, updateDoc, serverTimestamp, increment
+} from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+
+const firebaseConfig = {
+  apiKey: "AIzaSyC1othkTM-dWpcgHemTVEQBbQH2htLgrlo",
+  authDomain: "mi-lonche-5de4c.firebaseapp.com",
+  projectId: "mi-lonche-5de4c",
+  storageBucket: "mi-lonche-5de4c.firebasestorage.app",
+  messagingSenderId: "1036502042062",
+  appId: "1:1036502042062:web:35013f845c59dfbe87579f"
+};
+const app = initializeApp(firebaseConfig);
+const db  = initializeFirestore(app, {
+  localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
+});
+
+// ── CONSTANTES ──
+const DIAS        = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+const DIAS_FIADO  = ['dom','lun','mar','mié','jue','vie','sáb'];
+const MESES       = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+const MESES_CORTO = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+
+// Zona horaria Perú (UTC-5)
+function ahoraPerú() {
+  return new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Lima' }));
+}
+function todayId() {
+  const d = ahoraPerú();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+function fechaFiado(d) {
+  // Formato: "10 jun - jue"
+  return `${d.getDate()} ${MESES_CORTO[d.getMonth()]} - ${DIAS_FIADO[d.getDay()]}`;
+}
+function fmt(n) { return 'S/ ' + Number(n||0).toFixed(2); }
+function fmtDate(d) {
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+function horaPeru() {
+  return ahoraPerú().getHours();
+}
+function escHtml(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// Estado
+let currentClienteId  = null;
+let currentClienteNombre = '';
+let reporteMes        = new Date();
+let allClientes       = [];
+let fiadosDiaHoy      = 0; // suma de fiados del día mostrado en cierre
+let cobrosDiaHoy      = 0; // suma de pagos recibidos del día mostrado en cierre
+let cierreFechaActual = todayId(); // fecha actualmente seleccionada en la pantalla de cierre
+let unsubHistorial    = null;
+let cierreEnSheet     = null;
+
+// ── TOAST ──
+window.showToast = function(msg, isError=false) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'show' + (isError?' error':'');
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => t.className='', 2800);
+};
+window.addEventListener('offline',()=>showToast('Sin internet: guardando localmente'));
+window.addEventListener('online',()=>showToast('Internet volvio: sincronizando datos'));
+
+// ── HEADER ──
+(function() {
+  const d = ahoraPerú();
+  document.getElementById('header-fecha').textContent =
+    `${DIAS[d.getDay()]} ${d.getDate()} ${MESES_CORTO[d.getMonth()]} · 7pm – 10pm`;
+})();
+
+// ── TURNO ──
+function setTurno(cerrado) {
+  const badge = document.getElementById('turno-badge');
+  const lbl   = document.getElementById('turno-label');
+  lbl.textContent = cerrado ? 'CERRADO' : 'ABIERTO';
+  badge.classList.toggle('cerrado', cerrado);
+}
+async function actualizarTurnoAutomatico() {
+  try {
+    const snap = await getDoc(doc(db,'cierres',todayId()));
+    const cerrado = snap.exists() || horaPeru() < 18;
+    setTurno(cerrado);
+  } catch(e) {
+    setTurno(horaPeru() < 18);
+  }
+}
+window.toggleTurno = function() {
+  showToast('El turno se controla automatico desde las 6pm');
+};
+setInterval(actualizarTurnoAutomatico, 60000);
+
+// ── TABS ──
+window.switchTab = function(tab) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('screen-'+tab).classList.add('active');
+  document.getElementById('nav-'+tab).classList.add('active');
+  if (tab === 'fiados') hideDetalle();
+  if (tab === 'reporte') renderReporte();
+};
+
+// ── MODALS ──
+window.openModal    = id => document.getElementById(id).classList.add('open');
+window.closeModal   = id => document.getElementById(id).classList.remove('open');
+window.closeModalBg = (e,id) => { if(e.target===e.currentTarget) closeModal(id); };
+
+// ════════════════════════════════════
+// NOTAS
+// ════════════════════════════════════
+onSnapshot(query(collection(db,'notas'), orderBy('creadoEn','desc')), snap => {
+  const list = document.getElementById('notas-list');
+  if (snap.empty) { list.innerHTML='<div class="empty-state">Sin notas guardadas</div>'; return; }
+  list.innerHTML = '';
+  snap.forEach(d => list.appendChild(mkNota(d.id, d.data())));
+});
+
+function mkNota(id, data) {
+  const div = document.createElement('div');
+  div.className = 'saved-note';
+  const ts  = data.creadoEn?.toDate ? data.creadoEn.toDate() : new Date();
+  const meta = `${DIAS[ts.getDay()].toLowerCase()} ${ts.getDate()} ${MESES_CORTO[ts.getMonth()]} · ${ts.getHours()}:${String(ts.getMinutes()).padStart(2,'0')}`;
+  div.innerHTML = `<div class="note-meta">${meta}</div><div class="note-text">${escHtml(data.texto)}</div><button class="note-del" onclick="eliminarNota('${id}')">×</button>`;
+  return div;
+}
+
+window.limpiarNota = () => { document.getElementById('nota-input').value=''; };
+
+window.guardarNota = async function() {
+  const txt = document.getElementById('nota-input').value.trim();
+  if (!txt) return;
+  try {
+    await addDoc(collection(db,'notas'), { texto:txt, creadoEn:serverTimestamp() });
+    document.getElementById('nota-input').value='';
+    showToast('✓ Nota guardada');
+  } catch(e) { showToast('Error al guardar',true); }
+};
+
+// ✅ Doble confirmación al eliminar nota
+window.eliminarNota = async function(id) {
+  if (!confirm('¿Seguro que quieres eliminar esta nota?')) return;
+  if (!confirm('Confirmacion final: esta nota se borrara. Â¿Continuar?')) return;
+  try { await deleteDoc(doc(db,'notas',id)); showToast('Nota eliminada'); }
+  catch(e) { showToast('Error',true); }
+};
+
+// ════════════════════════════════════
+// FIADOS — Lista
+// ════════════════════════════════════
+onSnapshot(query(collection(db,'clientes'), orderBy('nombre')), snap => {
+  allClientes = snap.docs.map(d => ({id:d.id,...d.data()}));
+  renderClientes(allClientes);
+});
+
+function renderClientes(lista) {
+  const c = document.getElementById('clientes-container');
+  if (!lista.length) {
+    c.innerHTML='<div class="empty-state">Sin clientes registrados</div>'; return;
+  }
+  // Orden pasillos
+  const ORDEN = ['UNICACHI','PRIMER PASAJE','SEGUNDO PASAJE','TERCER PASAJE','CUARTO PASAJE','QUINTO PASAJE','AMPLIACION','EXTRA'];
+  const grupos = {};
+  lista.forEach(cl => {
+    const p = cl.pasillo||'SIN PASILLO';
+    if (!grupos[p]) grupos[p]=[];
+    grupos[p].push(cl);
+  });
+  c.innerHTML='';
+  const keys = Object.keys(grupos).sort((a,b) => {
+    const ia = ORDEN.indexOf(a); const ib = ORDEN.indexOf(b);
+    if (ia===-1 && ib===-1) return a.localeCompare(b);
+    if (ia===-1) return 1; if (ib===-1) return -1;
+    return ia-ib;
+  });
+  keys.forEach(pasillo => {
+    const lista2 = grupos[pasillo];
+    const total  = lista2.reduce((s,cl)=>s+(cl.deuda||0),0);
+    const sec    = document.createElement('div');
+    sec.className='pasillo-section';
+    sec.innerHTML=`<div class="pasillo-header"><div><span class="pasillo-name">${escHtml(pasillo)}</span><span class="pasillo-count" style="margin-left:8px">${lista2.length} cliente${lista2.length!==1?'s':''}</span></div><span class="pasillo-total">${fmt(total)}</span></div>`;
+    lista2.forEach(cl => {
+      const row=document.createElement('div');
+      row.className='client-row';
+      const cero=(cl.deuda||0)===0;
+      row.innerHTML=`<span class="client-name">${escHtml(cl.nombre)}</span><span class="client-amount${cero?' cero':''}">${cero?'Cero ✓':fmt(cl.deuda)}</span>`;
+      row.onclick=()=>showDetalle(cl.id,cl.nombre,cl.pasillo,cl.deuda||0);
+      sec.appendChild(row);
+    });
+    c.appendChild(sec);
+  });
+}
+
+window.filtrarClientes = function() {
+  const q=document.getElementById('search-input').value.toLowerCase();
+  renderClientes(q?allClientes.filter(c=>c.nombre.toLowerCase().includes(q)||(c.pasillo||'').toLowerCase().includes(q)):allClientes);
+};
+
+// ✅ Pasillos fijos + ✅ validar duplicado en mismo pasillo
+window.agregarCliente = async function() {
+  const nombre  = document.getElementById('nc-nombre').value.trim();
+  const pasillo = document.getElementById('nc-pasillo').value;
+  if (!nombre)  { showToast('Escribe un nombre',true); return; }
+  if (!pasillo) { showToast('Selecciona un pasillo',true); return; }
+  // Verificar duplicado
+  const dup = allClientes.find(c => c.nombre.toLowerCase()===nombre.toLowerCase() && c.pasillo===pasillo);
+  if (dup) { showToast(`"${nombre}" ya existe en ${pasillo}`,true); return; }
+  try {
+    await addDoc(collection(db,'clientes'),{nombre,pasillo,deuda:0,creadoEn:serverTimestamp()});
+    document.getElementById('nc-nombre').value='';
+    document.getElementById('nc-pasillo').value='';
+    closeModal('modal-add-client');
+    showToast('✓ Cliente agregado');
+  } catch(e) { showToast('Error',true); }
+};
+
+// ════════════════════════════════════
+// FIADOS — Detalle
+// ════════════════════════════════════
+window.showDetalle = function(id,nombre,pasillo,deuda) {
+  currentClienteId     = id;
+  currentClienteNombre = nombre;
+  document.getElementById('fiados-lista').style.display   = 'none';
+  document.getElementById('fiados-detalle').style.display = 'block';
+  document.getElementById('detalle-name').textContent    = nombre;
+  document.getElementById('detalle-pasillo').textContent = pasillo||'';
+  setDetalleTotal(deuda);
+  cargarHistorial(id);
+};
+
+window.hideDetalle = function() {
+  document.getElementById('fiados-lista').style.display   = 'block';
+  document.getElementById('fiados-detalle').style.display = 'none';
+  if (unsubHistorial){ unsubHistorial(); unsubHistorial=null; }
+  currentClienteId='';
+  document.getElementById('pay-amount').value='';
+};
+
+function setDetalleTotal(d) {
+  const el=document.getElementById('detalle-total');
+  el.textContent=fmt(d);
+  el.className='detail-total'+(d===0?' cero':'');
+}
+
+// ✅ Nombre auto-rellena + fecha auto-rellena como date input
+window.abrirModalFiado = function() {
+  document.getElementById('nf-nombre').value = currentClienteNombre;
+  document.getElementById('nf-monto').value  = '';
+  document.getElementById('nf-pedido').value = '';
+  document.getElementById('nf-fecha').value  = todayId(); // YYYY-MM-DD, el input type=date lo renderiza bien
+  document.getElementById('modal-fiado-title').textContent = `Agregar Fiado – ${currentClienteNombre}`;
+  openModal('modal-add-fiado');
+};
+
+function cargarHistorial(clienteId) {
+  if (unsubHistorial) unsubHistorial();
+  const hist=document.getElementById('fiados-historial');
+  hist.innerHTML='<div class="loading-spinner"><div class="spinner"></div></div>';
+
+  const q=query(collection(db,'clientes',clienteId,'fiados'),orderBy('creadoEn','desc'));
+  unsubHistorial=onSnapshot(q, snap => {
+    if(snap.empty){hist.innerHTML='<div class="empty-state">Sin movimientos</div>';return;}
+
+    const items=snap.docs.map(d=>({id:d.id,...d.data()}));
+    let deuda=0;
+    items.forEach(i=>{ deuda += i.tipo==='fiado'?(i.monto||0):-(i.monto||0); });
+    deuda=Math.max(0,deuda);
+    setDetalleTotal(deuda);
+
+    const ledger=document.createElement('div');
+    // ledger.className='ledger-card';
+    const head=document.createElement('div');
+    // head.className='ledger-head';
+    // head.innerHTML=`<div class="ledger-name">${escHtml(currentClienteNombre)}</div><div class="ledger-total">${fmt(deuda)}</div>`;
+    ledger.appendChild(head);
+
+    const itemsAsc=[...items].reverse();
+    let saldoAcum=0;
+    const eventos=itemsAsc.map(item=>{
+      saldoAcum += item.tipo==='fiado' ? (item.monto||0) : -(item.monto||0);
+      return {...item,saldoDespues:Math.max(0,saldoAcum)};
+    });
+
+    eventos.reverse().forEach(item=>{
+      const ts=item.creadoEn?.toDate ? item.creadoEn.toDate() : new Date();
+      const fStr=item.fechaTexto || fechaFiado(ts);
+
+      if(item.tipo==='pago') {
+        const quedaEl=document.createElement('div');
+        quedaEl.className='ledger-row queda';
+        quedaEl.innerHTML=`<span class="ledger-lbl">Queda</span><span class="ledger-amt">${fmt(item.saldoDespues)}</span><button class="ledger-del" onclick="eliminarMovimiento('${item.id}')">×</button>`;
+        ledger.appendChild(quedaEl);
+
+        const pagoEl=document.createElement('div');
+        pagoEl.className='ledger-row pago';
+        pagoEl.innerHTML=`<span class="ledger-lbl">Pago</span><span class="ledger-amt">${fmt(item.monto)}</span><button class="ledger-del" onclick="eliminarMovimiento('${item.id}')">×</button>`;
+        ledger.appendChild(pagoEl);
+        return;
+      }
+
+      const el=document.createElement('div');
+      el.className='ledger-row';
+      el.innerHTML=`
+        <span class="ledger-person">${escHtml(item.nombre||'')}</span>
+        <span class="ledger-desc">${escHtml(item.pedido||'')}</span>
+        <span class="ledger-date">${fStr.split(' - ')[0]}</span>
+        <span class="ledger-amt">${fmt(item.monto)}</span>
+        <button class="ledger-del" onclick="eliminarMovimiento('${item.id}')">×</button>
+      `;
+      ledger.appendChild(el);
+    });
+
+    hist.innerHTML='';
+    hist.appendChild(ledger);
+  });
+};
+
+window.agregarFiado = async function() {
+  if(!currentClienteId) return;
+  const nombre    = document.getElementById('nf-nombre').value.trim();
+  const monto     = parseFloat(document.getElementById('nf-monto').value);
+  const pedido    = document.getElementById('nf-pedido').value.trim();
+  const fechaId   = document.getElementById('nf-fecha').value || todayId(); // YYYY-MM-DD
+  const fechaTexto = fechaFiadoFromId(fechaId); // "19 jun - vie"
+  if(!nombre||!monto||monto<=0){showToast('Completa nombre y monto',true);return;}
+  try {
+    await addDoc(collection(db,'clientes',currentClienteId,'fiados'),{
+      tipo:'fiado',nombre,monto,pedido:pedido||'',fechaTexto,fechaId,creadoMs:Date.now(),creadoEn:serverTimestamp()
+    });
+    await recalcularDeuda(currentClienteId);
+    await registrarFiadoHoy(monto,fechaId);
+    closeModal('modal-add-fiado');
+    showToast('✓ Fiado guardado');
+  } catch(e){showToast('Error',true);console.error(e);}
+};
+
+window.confirmarPago = async function() {
+  if(!currentClienteId) return;
+  const monto=parseFloat(document.getElementById('pay-amount').value);
+  const fechaId=todayId();
+  if(!monto||monto<=0){showToast('Ingresa un monto válido',true);return;}
+
+  // ✅ Aviso si el pago es mayor a la deuda actual
+  const deudaText = document.getElementById('detalle-total').textContent;
+  const deudaActual = parseFloat(deudaText.replace('S/ ','')) || 0;
+  if(monto > deudaActual + 0.005) {
+    if(!confirm(`⚠️ El monto a pagar (${fmt(monto)}) es mayor a la deuda actual (${fmt(deudaActual)}).\n¿Deseas continuar de todas formas?`)) return;
+  }
+
+  const ahora=ahoraPerú();
+  try {
+    await addDoc(collection(db,'clientes',currentClienteId,'fiados'),{
+      tipo:'pago',monto,fechaTexto:fechaFiado(ahora),fechaId,creadoMs:Date.now(),creadoEn:serverTimestamp()
+    });
+    await recalcularDeuda(currentClienteId);
+    await registrarMovimientoDia('pago',monto,fechaId);
+    document.getElementById('pay-amount').value='';
+    showToast('✓ Pago registrado');
+  } catch(e){showToast('Error',true);}
+};
+
+// ✅ Doble confirmación al eliminar movimiento
+window.eliminarMovimiento = async function(fiadoId) {
+  if(!currentClienteId) return;
+  if(!confirm('¿Seguro que quieres eliminar este movimiento?')) return;
+  try {
+    const snap=await getDocs(collection(db,'clientes',currentClienteId,'fiados'));
+    const item=snap.docs.find(d=>d.id===fiadoId);
+    const data=item?.data();
+    if(item && item.data().tipo==='fiado') {
+      await registrarFiadoHoy(-(data.monto||0),data.fechaId||todayId());
+    }
+    if(item && item.data().tipo==='pago') {
+      await registrarMovimientoDia('pago',-(data.monto||0),data.fechaId||todayId());
+    }
+    await deleteDoc(doc(db,'clientes',currentClienteId,'fiados',fiadoId));
+    await recalcularDeuda(currentClienteId);
+    showToast('Eliminado');
+  } catch(e){showToast('Error',true);}
+};
+
+async function recalcularDeuda(clienteId) {
+  const snap=await getDocs(collection(db,'clientes',clienteId,'fiados'));
+  let deuda=0;
+  snap.forEach(d=>{ const dt=d.data(); deuda+=dt.tipo==='fiado'?(dt.monto||0):-(dt.monto||0); });
+  deuda=Math.max(0,deuda);
+  await updateDoc(doc(db,'clientes',clienteId),{deuda});
+}
+
+// ✅ Doble confirmación al eliminar cliente + limpia movimientosDia de todas las fechas afectadas
+window.eliminarCliente = async function() {
+  if(!currentClienteId) return;
+  const nombre=document.getElementById('detalle-name').textContent;
+  if(!confirm(`¿Eliminar a "${nombre}"?`)) return;
+  if(!confirm(`Confirmación final: se borrarán todos los fiados de "${nombre}". ¿Continuar?`)) return;
+  try {
+    const snap=await getDocs(collection(db,'clientes',currentClienteId,'fiados'));
+
+    // Calcular deltas por fecha para limpiar movimientosDia
+    const deltas={};
+    snap.docs.forEach(d => {
+      const data=d.data();
+      const fid=data.fechaId || todayId();
+      if(!deltas[fid]) deltas[fid]={fiados:0,cobros:0};
+      if(data.tipo==='fiado') deltas[fid].fiados+=(data.monto||0);
+      if(data.tipo==='pago')  deltas[fid].cobros+=(data.monto||0);
+    });
+
+    // Borrar todos los fiados
+    await Promise.all(snap.docs.map(d=>deleteDoc(d.ref)));
+
+    // Restar de movimientosDia en cada fecha afectada
+    for(const [fid,delta] of Object.entries(deltas)) {
+      const updates={fecha:fid,actualizadoEn:serverTimestamp()};
+      if(delta.fiados>0) updates.fiados=increment(-delta.fiados);
+      if(delta.cobros>0) updates.cobros=increment(-delta.cobros);
+      await setDoc(doc(db,'movimientosDia',fid),updates,{merge:true});
+    }
+
+    // Borrar el cliente
+    await deleteDoc(doc(db,'clientes',currentClienteId));
+
+    // Refrescar datos de la fecha actualmente mostrada en cierre
+    await recalcularFiadosDiaHoy(cierreFechaActual);
+
+    hideDetalle();
+    showToast('Cliente eliminado');
+  } catch(e){showToast('Error',true);console.error(e);}
+};
+
+// ════════════════════════════════════
+// HELPERS DE FECHA
+// ════════════════════════════════════
+// Convierte YYYY-MM-DD → "19 jun - vie" (evita problema UTC usando constructor local)
+function fechaFiadoFromId(dateStr) {
+  const [y,m,d] = dateStr.split('-').map(Number);
+  const fecha = new Date(y, m-1, d);
+  return `${fecha.getDate()} ${MESES_CORTO[fecha.getMonth()]} - ${DIAS_FIADO[fecha.getDay()]}`;
+}
+
+// ════════════════════════════════════
+// MOVIMIENTOS DEL DÍA (fiados y cobros)
+// Usa colección movimientosDia/{YYYY-MM-DD}
+// ════════════════════════════════════
+function pintarResumenDia() {
+  fiadosDiaHoy=Math.max(0,fiadosDiaHoy||0);
+  cobrosDiaHoy=Math.max(0,cobrosDiaHoy||0);
+  document.getElementById('kpi-fiados').textContent=fmt(fiadosDiaHoy);
+  document.getElementById('kpi-cobros').textContent=fmt(cobrosDiaHoy);
+  calcularCierre();
+}
+
+async function recalcularFiadosDiaHoy(fechaId=todayId()) {
+  try {
+    const snap=await getDoc(doc(db,'movimientosDia',fechaId));
+    if(snap.exists()) {
+      fiadosDiaHoy=Math.max(0,snap.data().fiados||0);
+      cobrosDiaHoy=Math.max(0,snap.data().cobros||0);
+    } else {
+      // Fallback legacy (solo para hoy)
+      if(fechaId===todayId()) {
+        const legacy=await getDoc(doc(db,'meta','fiadosDia'));
+        fiadosDiaHoy=(legacy.exists()&&legacy.data().fecha===fechaId)?(legacy.data().total||0):0;
+      } else {
+        fiadosDiaHoy=0;
+      }
+      cobrosDiaHoy=0;
+    }
+  } catch(e) {
+    fiadosDiaHoy=0; cobrosDiaHoy=0;
+  }
+  pintarResumenDia();
+}
+
+async function registrarMovimientoDia(tipo, delta, fechaId=todayId()) {
+  const data={fecha:fechaId, actualizadoEn:serverTimestamp()};
+  if(tipo==='fiado') data.fiados=increment(delta);
+  if(tipo==='pago')  data.cobros=increment(delta);
+  await setDoc(doc(db,'movimientosDia',fechaId),data,{merge:true});
+
+  // Actualizar vars locales solo si afecta la fecha mostrada en cierre
+  if(fechaId===cierreFechaActual) {
+    if(tipo==='fiado') fiadosDiaHoy=Math.max(0,fiadosDiaHoy+delta);
+    if(tipo==='pago')  cobrosDiaHoy=Math.max(0,cobrosDiaHoy+delta);
+    pintarResumenDia();
+  }
+}
+
+async function registrarFiadoHoy(delta, fechaId=todayId()) {
+  await registrarMovimientoDia('fiado',delta,fechaId);
+}
+
+// Carga datos de una fecha específica en la pantalla de cierre
+async function cargarCierreFecha(fechaId) {
+  cierreFechaActual=fechaId;
+  document.getElementById('cierre-total').value='';
+  document.getElementById('cierre-sencillo').value='';
+  document.getElementById('cierre-insumos').value='';
+  document.getElementById('cierre-saved-notice').style.display='none';
+
+  await recalcularFiadosDiaHoy(fechaId);
+
+  try {
+    const snap=await getDoc(doc(db,'cierres',fechaId));
+    if(snap.exists()&&!snap.data().noTrabajo) {
+      const d=snap.data();
+      document.getElementById('cierre-total').value=d.dineroTotal||'';
+      document.getElementById('cierre-sencillo').value=d.sencilloInicial||'';
+      document.getElementById('cierre-insumos').value=d.costoInsumos||'';
+      document.getElementById('cierre-saved-notice').style.display='block';
+    }
+  } catch(e){console.error(e);}
+  calcularCierre();
+}
+
+// ════════════════════════════════════
+// CIERRE
+// ════════════════════════════════════
+function calcularCierre() {
+  const total    = parseFloat(document.getElementById('cierre-total').value)    ||0;
+  const sencillo = parseFloat(document.getElementById('cierre-sencillo').value) ||0;
+  const insumos  = parseFloat(document.getElementById('cierre-insumos').value)  ||0;
+  const cobros   = cobrosDiaHoy;
+  const fiados   = fiadosDiaHoy;
+
+  const bruto    = Math.max(0, total-sencillo);
+  const ganancia = Math.max(0, bruto-insumos);
+  const venta    = Math.max(0, ganancia+fiados-cobros);
+
+  document.getElementById('d-total').textContent    = fmt(total);
+  document.getElementById('d-sencillo').textContent = '− '+fmt(sencillo);
+  document.getElementById('d-bruto').textContent    = fmt(bruto);
+  document.getElementById('d-insumos').textContent  = '− '+fmt(insumos);
+  document.getElementById('d-ganancia').textContent = fmt(ganancia);
+  document.getElementById('d-fiados').textContent   = '+ '+fmt(fiados);
+  document.getElementById('d-cobros').textContent   = '− '+fmt(cobros);
+  document.getElementById('d-venta').textContent    = fmt(venta);
+  document.getElementById('kpi-bruto').textContent  = fmt(bruto);
+  document.getElementById('kpi-ganancia').textContent = fmt(ganancia);
+  document.getElementById('kpi-venta').textContent  = fmt(venta);
+  document.getElementById('kpi-cobros').textContent = fmt(cobros);
+}
+window.calcularCierre=calcularCierre;
+
+// Cargar cierre si ya existe hoy + configurar selector de fecha
+(async function() {
+  const id=todayId();
+  cierreFechaActual=id;
+  document.getElementById('cierre-fecha-input').value=id;
+
+  // Listener para cambio de fecha en cierre
+  document.getElementById('cierre-fecha-input').addEventListener('change', async function() {
+    const fechaId=this.value;
+    if(!fechaId) return;
+    await cargarCierreFecha(fechaId);
+  });
+
+  const snap=await getDoc(doc(db,'cierres',id));
+  if(snap.exists()) {
+    const d=snap.data();
+    if(!d.noTrabajo) {
+      document.getElementById('cierre-total').value    = d.dineroTotal||'';
+      document.getElementById('cierre-sencillo').value = d.sencilloInicial||'';
+      document.getElementById('cierre-insumos').value  = d.costoInsumos||'';
+      document.getElementById('cierre-saved-notice').style.display='block';
+    }
+    if(!d.noTrabajo && d.guardadoEn) setTurno(true);
+    calcularCierre();
+  }
+  await recalcularFiadosDiaHoy(id);
+  await actualizarTurnoAutomatico();
+})();
+
+window.guardarCierre = async function() {
+  const total    = parseFloat(document.getElementById('cierre-total').value)    ||0;
+  const sencillo = parseFloat(document.getElementById('cierre-sencillo').value) ||0;
+  const insumos  = parseFloat(document.getElementById('cierre-insumos').value)  ||0;
+  const cobros   = cobrosDiaHoy;
+  const fiados   = fiadosDiaHoy;
+  const bruto    = Math.max(0,total-sencillo);
+  const ganancia = Math.max(0,bruto-insumos);
+  const venta    = Math.max(0,ganancia+fiados-cobros);
+
+  const id=cierreFechaActual||todayId();
+  try {
+    await setDoc(doc(db,'cierres',id),{
+      dineroTotal:total, sencilloInicial:sencillo, costoInsumos:insumos,
+      cobros, fiados, ingresoBruto:bruto, ganancia, venta,
+      noTrabajo:false, guardadoEn:serverTimestamp()
+    });
+    document.getElementById('cierre-saved-notice').style.display='block';
+    if(id===todayId()) setTurno(true); // ✅ Turno → CERRADO solo si es el cierre de hoy
+    showToast('✓ Cierre guardado');
+  } catch(e){showToast('Error al guardar',true);console.error(e);}
+};
+
+window.marcarNoTrabaje = async function() {
+  if(!confirm('¿Marcar este día como no trabajado?')) return;
+  try {
+    const id=cierreFechaActual||todayId();
+    await setDoc(doc(db,'cierres',id),{noTrabajo:true,guardadoEn:serverTimestamp()});
+    if(id===todayId()) setTurno(true);
+    showToast('Registrado: no trabajaste este día');
+  } catch(e){showToast('Error',true);}
+};
+
+// ════════════════════════════════════
+// REPORTE
+// ════════════════════════════════════
+async function renderReporte() {
+  const año = reporteMes.getFullYear();
+  const mes  = reporteMes.getMonth();
+  document.getElementById('reporte-mes-title').textContent=`${MESES[mes]} ${año}`;
+
+  const diasList=document.getElementById('dias-list');
+  diasList.innerHTML='<div class="loading-spinner"><div class="spinner"></div></div>';
+
+  const desde=`${año}-${String(mes+1).padStart(2,'0')}-01`;
+  const hasta=`${año}-${String(mes+1).padStart(2,'0')}-31`;
+  const snap=await getDocs(collection(db,'cierres'));
+  const cierres=snap.docs
+    .filter(d=>d.id>=desde&&d.id<=hasta)
+    .map(d=>({id:d.id,...d.data()}))
+    .sort((a,b)=>b.id.localeCompare(a.id));
+
+  const trabajados=cierres.filter(c=>!c.noTrabajo);
+  // ✅ Reporte usa "venta del día", no ganancia
+  const totalMes  =trabajados.reduce((s,c)=>s+(c.venta||0),0);
+  const diasCount =trabajados.length;
+
+  // ✅ Semana lunes–sábado (no domingo)
+  const hoy   =ahoraPerú();
+  const lunes =new Date(hoy); lunes.setDate(hoy.getDate()-((hoy.getDay()+6)%7));
+  const sabado=new Date(lunes); sabado.setDate(lunes.getDate()+5); // sábado = lunes+5
+  const semana=trabajados.filter(c=>c.id>=fmtDate(lunes)&&c.id<=fmtDate(sabado));
+  const totalSemana=semana.reduce((s,c)=>s+(c.venta||0),0);
+
+  // Mejor día por venta
+  const mejor=trabajados.reduce((m,c)=>(c.venta||0)>(m?.venta||0)?c:m,null);
+
+  document.getElementById('rep-mes-total').textContent    =fmt(totalMes);
+  document.getElementById('rep-mes-dias').textContent     =`${diasCount} día${diasCount!==1?'s':''} trabajado${diasCount!==1?'s':''}`;
+  document.getElementById('rep-semana-total').textContent =fmt(totalSemana);
+  document.getElementById('rep-semana-dias').textContent  =`${semana.length} día${semana.length!==1?'s':''}`;
+  document.getElementById('rep-mejor-val').textContent    =mejor?fmt(mejor.venta):'S/ 0';
+  document.getElementById('rep-mejor-dia').textContent    =mejor?fechaBonita(mejor.id):'—';
+  document.getElementById('rep-promedio').textContent     =diasCount?fmt(totalMes/diasCount):'S/ 0';
+  document.getElementById('rep-dias-trabajados').textContent=diasCount;
+
+  diasList.innerHTML='';
+  const diasMes=new Date(año,mes+1,0).getDate();
+  const hoyStr=todayId();
+  for(let d=diasMes;d>=1;d--) {
+    const dateId=`${año}-${String(mes+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    if(dateId>hoyStr) continue; // no mostrar días futuros
+    const cierre=cierres.find(c=>c.id===dateId);
+    const fecha=new Date(año,mes,d);
+    const label=`${DIAS[fecha.getDay()]} ${String(d).padStart(2,'0')}`;
+    const row=document.createElement('div');
+    row.className='dia-row';
+    if(!cierre) {
+      row.innerHTML=`<span class="dia-name">${label}</span><span class="dia-amt no-trabajo">No trabajado</span>`;
+    } else if(cierre.noTrabajo) {
+      row.innerHTML=`<span class="dia-name">${label}</span><span class="dia-amt no-trabajo">No trabajó</span>`;
+    } else {
+      row.innerHTML=`<span class="dia-name">${label}</span><span class="dia-amt">${fmt(cierre.venta)}</span>`;
+      row.onclick=()=>abrirReporteSheet(cierre);
+    }
+    diasList.appendChild(row);
+  }
+  if(!diasList.children.length) diasList.innerHTML='<div class="empty-state">Sin datos este mes</div>';
+}
+
+window.cambiarMes=function(dir){
+  reporteMes.setMonth(reporteMes.getMonth()+dir);
+  renderReporte();
+};
+
+function abrirReporteSheet(cierre) {
+  cierreEnSheet=cierre;
+  document.getElementById('sheet-date').textContent=fechaBonita(cierre.id);
+  document.getElementById('sheet-desglose').innerHTML=`
+    <div class="desglose-row"><span class="lbl">Dinero total</span><span class="val">${fmt(cierre.dineroTotal)}</span></div>
+    <div class="desglose-row"><span class="lbl">− Sencillo inicial</span><span class="val neg">− ${fmt(cierre.sencilloInicial)}</span></div>
+    <div class="desglose-divider"></div>
+    <div class="desglose-row"><span class="lbl">Ingreso Bruto</span><span class="val">${fmt(cierre.ingresoBruto)}</span></div>
+    <div class="desglose-row"><span class="lbl">− Costo de insumos</span><span class="val neg">− ${fmt(cierre.costoInsumos)}</span></div>
+    <div class="desglose-divider"></div>
+    <div class="desglose-row"><span class="lbl">Ganancia del día</span><span class="val pos">${fmt(cierre.ganancia)}</span></div>
+    <div class="desglose-row"><span class="lbl">+ Fiados del día</span><span class="val neg">+ ${fmt(cierre.fiados||0)}</span></div>
+    <div class="desglose-row"><span class="lbl">− Cobros recibidos</span><span class="val neg">− ${fmt(cierre.cobros||0)}</span></div>
+    <div class="desglose-divider"></div>
+    <div class="desglose-row total"><span class="lbl">Venta del día</span><span class="val">${fmt(cierre.venta)}</span></div>
+  `;
+  openModal('modal-reporte-sheet');
+}
+window.openReporteSheet=abrirReporteSheet;
+
+// ✅ Doble confirmación al eliminar cierre + reabre turno
+window.eliminarCierre=async function() {
+  if(!cierreEnSheet) return;
+  if(!confirm('¿Eliminar el cierre de este día?')) return;
+  if(!confirm('Confirmación final: ¿seguro que quieres borrar este cierre?')) return;
+  try {
+    await deleteDoc(doc(db,'cierres',cierreEnSheet.id));
+    // Si era el cierre de hoy, reabrir turno
+    if(cierreEnSheet.id===todayId()) {
+      setTurno(false);
+      document.getElementById('cierre-saved-notice').style.display='none';
+    }
+    closeModal('modal-reporte-sheet');
+    showToast('Cierre eliminado');
+    renderReporte();
+  } catch(e){showToast('Error',true);}
+};
+
+// EXPORTAR CSV
+window.exportarCSV=async function() {
+  const año=reporteMes.getFullYear();
+  const mes=reporteMes.getMonth();
+  const desde=`${año}-${String(mes+1).padStart(2,'0')}-01`;
+  const hasta=`${año}-${String(mes+1).padStart(2,'0')}-31`;
+  const snap=await getDocs(collection(db,'cierres'));
+  const cierres=snap.docs.filter(d=>d.id>=desde&&d.id<=hasta).map(d=>({id:d.id,...d.data()})).sort((a,b)=>a.id.localeCompare(b.id));
+  let csv='Fecha,Dinero Total,Sencillo,Insumos,Cobros,Fiados,Ingreso Bruto,Ganancia,Venta\n';
+  cierres.forEach(c=>{
+    if(c.noTrabajo){csv+=`${c.id},No trabajó\n`;return;}
+    csv+=`${c.id},${c.dineroTotal||0},${c.sencilloInicial||0},${c.costoInsumos||0},${c.cobros||0},${c.fiados||0},${c.ingresoBruto||0},${c.ganancia||0},${c.venta||0}\n`;
+  });
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
+  a.download=`lonche-${MESES[mes].toLowerCase()}-${año}.csv`;
+  a.click();
+  showToast('CSV exportado');
+};
+
+// HELPERS
+function fechaBonita(id) {
+  const [a,m,d]=id.split('-');
+  const f=new Date(+a,+m-1,+d);
+  return `${DIAS[f.getDay()]} ${+d} de ${MESES[+m-1]} ${a}`;
+}
+</script>
+</body>
+</html>

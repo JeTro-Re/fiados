@@ -88,7 +88,11 @@
   .search-wrap svg{position:absolute;left:12px;top:50%;transform:translateY(-50%);pointer-events:none;}
   .input.search{padding-left:38px;}
   .pasillo-section{margin-bottom:14px;}
-  .pasillo-header{display:flex;align-items:center;justify-content:space-between;background:var(--amber-dim);border:1px solid var(--border);border-radius:var(--radius-sm) var(--radius-sm) 0 0;padding:9px 14px;}
+  .pasillo-header{display:flex;align-items:center;justify-content:space-between;background:var(--amber-dim);border:1px solid var(--border);border-radius:var(--radius-sm) var(--radius-sm) 0 0;padding:9px 14px;cursor:pointer;user-select:none;-webkit-tap-highlight-color:transparent;}
+  .pasillo-chevron{transition:transform .22s ease;color:var(--amber);flex-shrink:0;}
+  .pasillo-section.collapsed .pasillo-chevron{transform:rotate(-90deg);}
+  .pasillo-section.collapsed .client-row{display:none;}
+  .pasillo-section.collapsed .pasillo-header{border-radius:var(--radius-sm);}
   .pasillo-name{font-family:'Space Grotesk',sans-serif;font-size:13px;font-weight:700;color:var(--amber);text-transform:uppercase;letter-spacing:.5px;}
   .pasillo-count{font-size:12px;color:var(--muted);font-weight:600;}
   .pasillo-total{font-size:13px;font-weight:700;color:var(--text);}
@@ -546,6 +550,7 @@ let cobrosDiaHoy      = 0; // suma de pagos recibidos del día mostrado en cierr
 let cierreFechaActual = todayId(); // fecha actualmente seleccionada en la pantalla de cierre
 let unsubHistorial    = null;
 let cierreEnSheet     = null;
+let collapsedPasillos = {}; // estado colapsado por pasillo
 
 // ── TOAST ──
 window.showToast = function(msg, isError=false) {
@@ -673,7 +678,12 @@ function renderClientes(lista) {
     const total  = lista2.reduce((s,cl)=>s+(cl.deuda||0),0);
     const sec    = document.createElement('div');
     sec.className='pasillo-section';
-    sec.innerHTML=`<div class="pasillo-header"><div><span class="pasillo-name">${escHtml(pasillo)}</span><span class="pasillo-count" style="margin-left:8px">${lista2.length} cliente${lista2.length!==1?'s':''}</span></div><span class="pasillo-total">${fmt(total)}</span></div>`;
+    sec.innerHTML=`<div class="pasillo-header"><div><span class="pasillo-name">${escHtml(pasillo)}</span><span class="pasillo-count" style="margin-left:8px">${lista2.length} cliente${lista2.length!==1?'s':''}</span></div><div style="display:flex;align-items:center;gap:10px"><span class="pasillo-total">${fmt(total)}</span><svg class="pasillo-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg></div></div>`;
+    if (collapsedPasillos[pasillo]) sec.classList.add('collapsed');
+    sec.querySelector('.pasillo-header').addEventListener('click', () => {
+      sec.classList.toggle('collapsed');
+      collapsedPasillos[pasillo] = sec.classList.contains('collapsed');
+    });
     lista2.forEach(cl => {
       const row=document.createElement('div');
       row.className='client-row';

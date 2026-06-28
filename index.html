@@ -842,7 +842,7 @@ window.agregarFiado = async function() {
 window.confirmarPago = async function() {
   if(!currentClienteId) return;
   const monto=parseFloat(document.getElementById('pay-amount').value);
-  const fechaId=todayId();
+  const hoy=cierreFechaActual || todayId(); // ✅ sigue la fecha seleccionada en cierre
   if(!monto||monto<=0){showToast('Ingresa un monto válido',true);return;}
 
   // ✅ Aviso si el pago es mayor a la deuda actual
@@ -852,13 +852,30 @@ window.confirmarPago = async function() {
     if(!confirm(`⚠️ El monto a pagar (${fmt(monto)}) es mayor a la deuda actual (${fmt(deudaActual)}).\n¿Deseas continuar de todas formas?`)) return;
   }
 
+  // ✅ Separar cuánto del pago es cobro de días anteriores vs cancelación del mismo día
+  const fiadosSnap = await getDocs(collection(db,'clientes',currentClienteId,'fiados'));
+  let fiadosHoyBruto = 0;
+  fiadosSnap.forEach(d => {
+    const data = d.data();
+    if(data.tipo === 'fiado' && data.fechaId === hoy) fiadosHoyBruto += data.monto || 0;
+  });
+  // Deuda neta de días anteriores
+  const deudaAnterior  = Math.max(0, deudaActual - fiadosHoyBruto);
+  // Porción del pago que cubre deuda anterior = cobro real
+  const cobrosMonto    = Math.min(monto, deudaAnterior);
+  // Porción del pago que cancela fiados del mismo día
+  const fiadosCancelados = Math.min(monto - cobrosMonto, fiadosHoyBruto);
+
   const ahora=ahoraPerú();
   try {
     await addDoc(collection(db,'clientes',currentClienteId,'fiados'),{
-      tipo:'pago',monto,fechaTexto:fechaFiado(ahora),fechaId,creadoMs:Date.now(),creadoEn:serverTimestamp()
+      tipo:'pago', monto, cobrosMonto, fiadosCancelados,
+      fechaTexto:fechaFiado(ahora), fechaId:hoy,
+      creadoMs:Date.now(), creadoEn:serverTimestamp()
     });
     await recalcularDeuda(currentClienteId);
-    await registrarMovimientoDia('pago',monto,fechaId);
+    if(cobrosMonto > 0)      await registrarMovimientoDia('pago',   cobrosMonto,      hoy);
+    if(fiadosCancelados > 0) await registrarMovimientoDia('fiado', -fiadosCancelados, hoy);
     document.getElementById('pay-amount').value='';
     showToast('✓ Pago registrado');
   } catch(e){showToast('Error',true);}
@@ -876,7 +893,11 @@ window.eliminarMovimiento = async function(fiadoId) {
       await registrarFiadoHoy(-(data.monto||0),data.fechaId||todayId());
     }
     if(item && item.data().tipo==='pago') {
-      await registrarMovimientoDia('pago',-(data.monto||0),data.fechaId||todayId());
+      const cm = data.cobrosMonto !== undefined ? data.cobrosMonto : (data.monto||0);
+      const fc = data.fiadosCancelados || 0;
+      const fid = data.fechaId || todayId();
+      if(cm > 0) await registrarMovimientoDia('pago',   -cm, fid);
+      if(fc > 0) await registrarMovimientoDia('fiado',   fc, fid);
     }
     await deleteDoc(doc(db,'clientes',currentClienteId,'fiados',fiadoId));
     await recalcularDeuda(currentClienteId);
@@ -908,7 +929,12 @@ window.eliminarCliente = async function() {
       const fid=data.fechaId || todayId();
       if(!deltas[fid]) deltas[fid]={fiados:0,cobros:0};
       if(data.tipo==='fiado') deltas[fid].fiados+=(data.monto||0);
-      if(data.tipo==='pago')  deltas[fid].cobros+=(data.monto||0);
+      if(data.tipo==='pago') {
+        const cm = data.cobrosMonto !== undefined ? data.cobrosMonto : (data.monto||0);
+        const fc = data.fiadosCancelados || 0;
+        deltas[fid].cobros += cm;
+        deltas[fid].fiados -= fc; // restaurar fiados que este pago había cancelado
+      }
     });
 
     // Borrar todos los fiados
@@ -917,7 +943,7 @@ window.eliminarCliente = async function() {
     // Restar de movimientosDia en cada fecha afectada
     for(const [fid,delta] of Object.entries(deltas)) {
       const updates={fecha:fid,actualizadoEn:serverTimestamp()};
-      if(delta.fiados>0) updates.fiados=increment(-delta.fiados);
+      if(delta.fiados!==0) updates.fiados=increment(-delta.fiados);
       if(delta.cobros>0) updates.cobros=increment(-delta.cobros);
       await setDoc(doc(db,'movimientosDia',fid),updates,{merge:true});
     }

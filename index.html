@@ -136,6 +136,19 @@
     .ledger-row.pago,.ledger-row.queda{grid-template-columns:1fr 74px 22px;}
   }
 
+  /* Menú de acciones (⋮) por fila de fiado: WhatsApp + Eliminar */
+  .ledger-kebab{width:20px;height:20px;border:none;border-radius:5px;background:rgba(0,0,0,.12);color:#222;display:flex;align-items:center;justify-content:center;cursor:pointer;-webkit-tap-highlight-color:transparent;}
+  .ledger-menu{position:fixed;z-index:5000;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);box-shadow:0 4px 20px rgba(0,0,0,.18);overflow:hidden;min-width:190px;animation:fadeIn .12s ease;}
+  .ledger-menu-item{display:flex;align-items:center;gap:8px;width:100%;text-align:left;padding:12px 14px;background:none;border:none;font-family:'Inter',sans-serif;font-size:13px;font-weight:600;color:var(--text);cursor:pointer;-webkit-tap-highlight-color:transparent;}
+  .ledger-menu-item:active{background:var(--bg);}
+  .ledger-menu-item.wa{color:#22A06B;}
+  .ledger-menu-item.del{color:var(--red);border-top:1px solid var(--border);}
+
+  /* DETALLE cliente — nombre + editar celular */
+  .detail-name-row{display:flex;align-items:center;gap:6px;}
+  .edit-celular-btn{background:var(--bg);border:1px solid var(--border);color:var(--muted);width:22px;height:22px;border-radius:6px;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;-webkit-tap-highlight-color:transparent;}
+  .edit-celular-btn.has-celular{color:var(--green);border-color:var(--green);}
+
   /* SELECT estilo input */
   select.input{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238B90A8' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center;}
 
@@ -146,6 +159,10 @@
   .modal-title{font-family:'Space Grotesk',sans-serif;font-size:17px;font-weight:700;margin-bottom:18px;}
   .modal-fields{display:flex;flex-direction:column;gap:10px;}
   .modal-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .nf-item{border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px;display:flex;flex-direction:column;gap:8px;margin-bottom:10px;background:var(--bg);}
+  .nf-item-head{display:flex;align-items:center;justify-content:space-between;}
+  .nf-item-num{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.03em;}
+  .nf-item-remove{width:20px;height:20px;border:none;border-radius:5px;background:rgba(0,0,0,.12);color:#222;display:flex;align-items:center;justify-content:center;font-size:14px;line-height:1;cursor:pointer;-webkit-tap-highlight-color:transparent;}
   .modal-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:18px;}
   @keyframes slideUp{from{transform:translateY(100%)}}
 
@@ -267,7 +284,12 @@
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15 18l-6-6 6-6"/></svg>
           </button>
           <div class="detail-info">
-            <div class="detail-name" id="detalle-name">—</div>
+            <div class="detail-name-row">
+              <div class="detail-name" id="detalle-name">—</div>
+              <button class="edit-celular-btn" id="edit-celular-btn" onclick="abrirEditarCelular()" title="Editar celular">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+              </button>
+            </div>
             <div class="detail-pasillo" id="detalle-pasillo">—</div>
           </div>
           <div class="detail-total" id="detalle-total">S/ 0.00</div>
@@ -446,10 +468,39 @@
         <option>AMPLIACION</option>
         <option>EXTRA</option>
       </select>
+      <input type="tel" class="input" id="nc-celular" placeholder="Celular (opcional, para WhatsApp)">
     </div>
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closeModal('modal-add-client')">Cancelar</button>
       <button class="btn btn-amber" onclick="agregarCliente()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Ofrecer envío WhatsApp tras guardar fiado -->
+<div class="modal-overlay" id="modal-fiado-enviado" onclick="closeModalBg(event,'modal-fiado-enviado')">
+  <div class="modal">
+    <div class="modal-title">✓ Fiado guardado</div>
+    <div class="modal-fields">
+      <div style="font-size:14px;color:var(--muted);line-height:1.5">¿Enviar el detalle a <span id="fe-nombre" style="color:var(--text);font-weight:600">—</span> por WhatsApp?</div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('modal-fiado-enviado')">Ahora no</button>
+      <button class="btn btn-green" onclick="enviarWhatsappDesdeModal()">Enviar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Editar Celular -->
+<div class="modal-overlay" id="modal-edit-celular" onclick="closeModalBg(event,'modal-edit-celular')">
+  <div class="modal">
+    <div class="modal-title">Celular del cliente</div>
+    <div class="modal-fields">
+      <input type="tel" class="input" id="ec-celular" placeholder="Ej: 987654321">
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('modal-edit-celular')">Cancelar</button>
+      <button class="btn btn-amber" onclick="guardarCelular()">Guardar</button>
     </div>
   </div>
 </div>
@@ -459,12 +510,9 @@
   <div class="modal">
     <div class="modal-title" id="modal-fiado-title">Agregar Fiado</div>
     <div class="modal-fields">
-      <div class="modal-row">
-        <input type="text" class="input" id="nf-nombre" placeholder="Nombre">
-        <input type="number" class="input" id="nf-monto" placeholder="Monto" step="0.50" min="0">
-      </div>
-      <textarea class="input" id="nf-pedido" placeholder="Pedido (puede ser largo)" style="resize:none;min-height:70px;line-height:1.5"></textarea>
       <input type="date" class="input" id="nf-fecha">
+      <div id="nf-items"></div>
+      <button type="button" class="btn btn-outline btn-sm" id="nf-add-btn" style="width:100%" onclick="agregarItemFiado()">+ Agregar otro lonche</button>
     </div>
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closeModal('modal-add-fiado')">Cancelar</button>
@@ -543,6 +591,10 @@ function escHtml(s) {
 // Estado
 let currentClienteId  = null;
 let currentClienteNombre = '';
+let currentClienteCelular = '';
+let lastFiadoMonto  = 0;
+let lastFiadoPedido = '';
+let nfItemCount = 0; // contador único para los bloques dinámicos de "lonches"
 let reporteMes        = new Date();
 let allClientes       = [];
 let fiadosDiaHoy      = 0; // suma de fiados del día mostrado en cierre
@@ -679,7 +731,8 @@ function renderClientes(lista) {
     const sec    = document.createElement('div');
     sec.className='pasillo-section';
     sec.innerHTML=`<div class="pasillo-header"><div><span class="pasillo-name">${escHtml(pasillo)}</span><span class="pasillo-count" style="margin-left:8px">${lista2.length} cliente${lista2.length!==1?'s':''}</span></div><div style="display:flex;align-items:center;gap:10px"><span class="pasillo-total">${fmt(total)}</span><svg class="pasillo-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg></div></div>`;
-    if (collapsedPasillos[pasillo]) sec.classList.add('collapsed');
+    // ✅ Por defecto cerrado: solo queda abierto si el usuario lo abrió explícitamente en esta sesión
+    if (collapsedPasillos[pasillo] !== false) sec.classList.add('collapsed');
     sec.querySelector('.pasillo-header').addEventListener('click', () => {
       sec.classList.toggle('collapsed');
       collapsedPasillos[pasillo] = sec.classList.contains('collapsed');
@@ -689,7 +742,7 @@ function renderClientes(lista) {
       row.className='client-row';
       const cero=(cl.deuda||0)===0;
       row.innerHTML=`<span class="client-name">${escHtml(cl.nombre)}</span><span class="client-amount${cero?' cero':''}">${cero?'Cero ✓':fmt(cl.deuda)}</span>`;
-      row.onclick=()=>showDetalle(cl.id,cl.nombre,cl.pasillo,cl.deuda||0);
+      row.onclick=()=>showDetalle(cl.id,cl.nombre,cl.pasillo,cl.deuda||0,cl.celular||'');
       sec.appendChild(row);
     });
     c.appendChild(sec);
@@ -705,30 +758,113 @@ window.filtrarClientes = function() {
 window.agregarCliente = async function() {
   const nombre  = document.getElementById('nc-nombre').value.trim();
   const pasillo = document.getElementById('nc-pasillo').value;
+  const celular = document.getElementById('nc-celular').value.trim(); // opcional
   if (!nombre)  { showToast('Escribe un nombre',true); return; }
   if (!pasillo) { showToast('Selecciona un pasillo',true); return; }
   // Verificar duplicado
   const dup = allClientes.find(c => c.nombre.toLowerCase()===nombre.toLowerCase() && c.pasillo===pasillo);
   if (dup) { showToast(`"${nombre}" ya existe en ${pasillo}`,true); return; }
   try {
-    await addDoc(collection(db,'clientes'),{nombre,pasillo,deuda:0,creadoEn:serverTimestamp()});
+    await addDoc(collection(db,'clientes'),{nombre,pasillo,celular:celular||'',deuda:0,creadoEn:serverTimestamp()});
     document.getElementById('nc-nombre').value='';
     document.getElementById('nc-pasillo').value='';
+    document.getElementById('nc-celular').value='';
     closeModal('modal-add-client');
     showToast('✓ Cliente agregado');
   } catch(e) { showToast('Error',true); }
 };
 
+// ✅ Menú de acciones (⋮) por fiado: Enviar por WhatsApp / Eliminar
+function cerrarMenuAcciones() {
+  const m = document.getElementById('ledger-action-menu');
+  if (m) m.remove();
+  document.removeEventListener('click', cerrarMenuAcciones, true);
+}
+
+function abrirMenuAcciones(btn, item) {
+  cerrarMenuAcciones();
+  const menu = document.createElement('div');
+  menu.id = 'ledger-action-menu';
+  menu.className = 'ledger-menu';
+  menu.innerHTML = `
+    <button class="ledger-menu-item wa">Enviar por WhatsApp</button>
+    <button class="ledger-menu-item del">Eliminar</button>
+  `;
+  document.body.appendChild(menu);
+
+  const rect = btn.getBoundingClientRect();
+  const menuWidth = menu.offsetWidth || 190;
+  const menuHeight = menu.offsetHeight || 90;
+  let left = rect.right - menuWidth;
+  if (left < 8) left = 8;
+  let top = rect.bottom + 4;
+  if (top + menuHeight > window.innerHeight - 8) top = rect.top - menuHeight - 4;
+  menu.style.left = left + 'px';
+  menu.style.top = top + 'px';
+
+  menu.querySelector('.wa').addEventListener('click', (e) => {
+    e.stopPropagation();
+    cerrarMenuAcciones();
+    enviarWhatsappFiado(item.monto, item.pedido);
+  });
+  menu.querySelector('.del').addEventListener('click', (e) => {
+    e.stopPropagation();
+    cerrarMenuAcciones();
+    eliminarMovimiento(item.id);
+  });
+
+  setTimeout(() => document.addEventListener('click', cerrarMenuAcciones, true), 0);
+}
+
+// ✅ Editar celular de un cliente existente (para envío de cuentas por WhatsApp)
+window.abrirEditarCelular = function() {
+  if (!currentClienteId) return;
+  document.getElementById('ec-celular').value = currentClienteCelular||'';
+  openModal('modal-edit-celular');
+};
+
+window.guardarCelular = async function() {
+  if (!currentClienteId) return;
+  const celular = document.getElementById('ec-celular').value.trim();
+  try {
+    await updateDoc(doc(db,'clientes',currentClienteId),{celular});
+    currentClienteCelular = celular;
+    document.getElementById('edit-celular-btn').classList.toggle('has-celular', !!celular);
+    closeModal('modal-edit-celular');
+    showToast('✓ Celular actualizado');
+  } catch(e) { showToast('Error',true); }
+};
+
+// ✅ Enviar por WhatsApp el detalle de un fiado puntual: "Queda [monto] - [pedido]"
+function normalizarCelular(cel) {
+  const digitos = String(cel||'').replace(/\D/g,'');
+  if (digitos.length === 9) return '51'+digitos; // celular peruano sin código de país
+  return digitos;
+}
+window.enviarWhatsappFiado = function(monto, pedido) {
+  if (!currentClienteCelular) { showToast('Este cliente no tiene celular guardado',true); return; }
+  const numero = normalizarCelular(currentClienteCelular);
+  if (!numero) { showToast('Celular inválido',true); return; }
+  const msg = `Queda ${fmt(monto)} - ${pedido||''}`;
+  window.open(`https://wa.me/${numero}?text=${encodeURIComponent(msg)}`,'_blank');
+};
+window.enviarWhatsappDesdeModal = function() {
+  closeModal('modal-fiado-enviado');
+  enviarWhatsappFiado(lastFiadoMonto, lastFiadoPedido);
+};
+
 // ════════════════════════════════════
 // FIADOS — Detalle
 // ════════════════════════════════════
-window.showDetalle = function(id,nombre,pasillo,deuda) {
-  currentClienteId     = id;
-  currentClienteNombre = nombre;
+window.showDetalle = function(id,nombre,pasillo,deuda,celular) {
+  currentClienteId      = id;
+  currentClienteNombre  = nombre;
+  currentClienteCelular = celular||'';
   document.getElementById('fiados-lista').style.display   = 'none';
   document.getElementById('fiados-detalle').style.display = 'block';
   document.getElementById('detalle-name').textContent    = nombre;
   document.getElementById('detalle-pasillo').textContent = pasillo||'';
+  document.getElementById('edit-celular-btn').classList.toggle('has-celular', !!currentClienteCelular);
   setDetalleTotal(deuda);
   cargarHistorial(id);
 };
@@ -747,13 +883,54 @@ function setDetalleTotal(d) {
   el.className='detail-total'+(d===0?' cero':'');
 }
 
-// ✅ Nombre auto-rellena + fecha auto-rellena como date input
+// ✅ Genera el HTML de un bloque "lonche" (nombre + monto + pedido)
+function nfItemHTML(idx, nombreDefault) {
+  return `
+    <div class="nf-item" data-idx="${idx}">
+      <div class="nf-item-head">
+        <span class="nf-item-num">Lonche</span>
+        <button type="button" class="nf-item-remove" onclick="quitarItemFiado(${idx})" title="Quitar">×</button>
+      </div>
+      <div class="modal-row">
+        <input type="text" class="input" id="nf-nombre-${idx}" placeholder="Nombre" value="${escHtml(nombreDefault||'')}">
+        <input type="number" class="input" id="nf-monto-${idx}" placeholder="Monto" step="0.50" min="0">
+      </div>
+      <textarea class="input" id="nf-pedido-${idx}" placeholder="Pedido (puede ser largo)" style="resize:none;min-height:60px;line-height:1.5"></textarea>
+    </div>
+  `;
+}
+
+// Renumera las etiquetas visibles y oculta "quitar" si solo queda un bloque
+function actualizarNfItems() {
+  const items = document.querySelectorAll('#nf-items .nf-item');
+  items.forEach((it, i) => {
+    it.querySelector('.nf-item-num').textContent = `Lonche ${i+1}`;
+    it.querySelector('.nf-item-remove').style.display = items.length > 1 ? 'flex' : 'none';
+  });
+}
+
+window.agregarItemFiado = function() {
+  nfItemCount++;
+  document.getElementById('nf-items').insertAdjacentHTML('beforeend', nfItemHTML(nfItemCount, currentClienteNombre));
+  actualizarNfItems();
+  document.getElementById(`nf-nombre-${nfItemCount}`).focus();
+};
+
+window.quitarItemFiado = function(idx) {
+  const items = document.querySelectorAll('#nf-items .nf-item');
+  if (items.length <= 1) { showToast('Debe quedar al menos un lonche',true); return; }
+  const el = document.querySelector(`.nf-item[data-idx="${idx}"]`);
+  if (el) el.remove();
+  actualizarNfItems();
+};
+
+// ✅ La fecha se define una sola vez para todo el grupo; siempre arranca con un solo bloque
 window.abrirModalFiado = function() {
-  document.getElementById('nf-nombre').value = currentClienteNombre;
-  document.getElementById('nf-monto').value  = '';
-  document.getElementById('nf-pedido').value = '';
-  document.getElementById('nf-fecha').value  = todayId(); // YYYY-MM-DD, el input type=date lo renderiza bien
+  document.getElementById('nf-fecha').value = todayId(); // YYYY-MM-DD, el input type=date lo renderiza bien
   document.getElementById('modal-fiado-title').textContent = `Agregar Fiado – ${currentClienteNombre}`;
+  nfItemCount = 0;
+  document.getElementById('nf-items').innerHTML = nfItemHTML(0, currentClienteNombre);
+  actualizarNfItems();
   openModal('modal-add-fiado');
 };
 
@@ -810,8 +987,9 @@ function cargarHistorial(clienteId) {
         <span class="ledger-desc">${escHtml(item.pedido||'')}</span>
         <span class="ledger-date">${fStr.split(' - ')[0]}</span>
         <span class="ledger-amt">${fmt(item.monto)}</span>
-        <button class="ledger-del" onclick="eliminarMovimiento('${item.id}')">×</button>
+        <button class="ledger-kebab" title="Más acciones">⋮</button>
       `;
+      el.querySelector('.ledger-kebab').addEventListener('click', (e) => abrirMenuAcciones(e.currentTarget, item));
       ledger.appendChild(el);
     });
 
@@ -822,20 +1000,41 @@ function cargarHistorial(clienteId) {
 
 window.agregarFiado = async function() {
   if(!currentClienteId) return;
-  const nombre    = document.getElementById('nf-nombre').value.trim();
-  const monto     = parseFloat(document.getElementById('nf-monto').value);
-  const pedido    = document.getElementById('nf-pedido').value.trim();
-  const fechaId   = document.getElementById('nf-fecha').value || todayId(); // YYYY-MM-DD
+  const fechaId    = document.getElementById('nf-fecha').value || todayId(); // YYYY-MM-DD, una sola vez para todo el grupo
   const fechaTexto = fechaFiadoFromId(fechaId); // "19 jun - vie"
-  if(!nombre||!monto||monto<=0){showToast('Completa nombre y monto',true);return;}
+  const bloques    = document.querySelectorAll('#nf-items .nf-item');
+
+  // Recolectar y validar todos los lonches antes de guardar nada
+  const lonches = [];
+  for (const bloque of bloques) {
+    const idx    = bloque.dataset.idx;
+    const nombre = document.getElementById(`nf-nombre-${idx}`).value.trim();
+    const monto  = parseFloat(document.getElementById(`nf-monto-${idx}`).value);
+    const pedido = document.getElementById(`nf-pedido-${idx}`).value.trim();
+    if(!nombre||!monto||monto<=0){showToast('Completa nombre y monto en todos los lonches',true);return;}
+    lonches.push({nombre,monto,pedido});
+  }
+  if(!lonches.length){showToast('Agrega al menos un lonche',true);return;}
+
   try {
-    await addDoc(collection(db,'clientes',currentClienteId,'fiados'),{
-      tipo:'fiado',nombre,monto,pedido:pedido||'',fechaTexto,fechaId,creadoMs:Date.now(),creadoEn:serverTimestamp()
-    });
+    for (const l of lonches) {
+      await addDoc(collection(db,'clientes',currentClienteId,'fiados'),{
+        tipo:'fiado', nombre:l.nombre, monto:l.monto, pedido:l.pedido||'', fechaTexto, fechaId,
+        creadoMs:Date.now(), creadoEn:serverTimestamp()
+      });
+    }
     await recalcularDeuda(currentClienteId);
-    await registrarFiadoHoy(monto,fechaId);
+    const totalMonto = lonches.reduce((s,l)=>s+l.monto,0);
+    await registrarFiadoHoy(totalMonto,fechaId);
     closeModal('modal-add-fiado');
-    showToast('✓ Fiado guardado');
+    showToast(lonches.length>1 ? `✓ ${lonches.length} lonches guardados` : '✓ Fiado guardado');
+    // ✅ Si el cliente tiene celular guardado, ofrecer enviar el detalle por WhatsApp (monto y pedidos del grupo completo)
+    if (currentClienteCelular) {
+      lastFiadoMonto  = totalMonto;
+      lastFiadoPedido = lonches.map(l=>l.pedido).filter(Boolean).join(', ');
+      document.getElementById('fe-nombre').textContent = currentClienteNombre;
+      openModal('modal-fiado-enviado');
+    }
   } catch(e){showToast('Error',true);console.error(e);}
 };
 

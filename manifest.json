@@ -1,0 +1,17 @@
+{
+    "short_name": "Fiados",
+    "name": "Lonche Fiados",
+    "icons": [
+        {
+            "src": "/logo.png",
+            "sizes": "192x192",
+            "type": "image/png"
+        }
+    ],
+    "start_url": "/index.html",
+    "display": "standalone",
+    "background_color": "#f5f5f8",
+    "theme_color": "#f5f5f8",
+    "orientation": "portrait",
+    "categories": ["business"]
+}
